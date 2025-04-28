@@ -1,0 +1,43 @@
+# Spring Boot 3 推荐的 YAML 配置示例
+# 请将本文件复制到宿主项目的resources目录并按需修改
+spring:
+  application:
+    name: influx3xtend
+
+# 分析引擎配置
+influx3xtend:
+  engine:
+    # 适配器类型，可选：default（InfluxDB 3 Core）、duckdb
+    type: default
+    # 连接超时时间（毫秒）
+    connection-timeout: 5000
+    # 查询超时时间（毫秒）
+    query-timeout: 30000
+    # 是否自动连接
+    auto-connect: true
+
+# DuckDB引擎特定配置
+duckdb:
+  # DuckDB连接URL，默认使用内存模式
+  url: jdbc:duckdb:memory:
+  # 是否启用并行查询
+  enable-parallel-query: true
+  # 最大并行度
+  max-parallelism: 4
+
+# InfluxDB配置
+influxdb:
+  # InfluxDB服务器URL
+  url: http://localhost:8086
+  # InfluxDB组织
+  org: myorg
+  # InfluxDB访问令牌
+  token: mytoken
+  # InfluxDB数据库/桶名称
+  database: mydb
+  # Parquet文件目录
+  parquet-directory: ./data/parquet
+  # 连接池大小
+  connection-pool-size: 10
+  # 是否启用SSL
+  enable-ssl: false
