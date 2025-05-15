@@ -31,7 +31,9 @@ class DuckDBAnalysisEngineAdapterTest {
         // String querySql = DuckDBAnalysisEngineAdapter.buildQuery("temperature", null, null);
 
         List<TemperatureData> points = duckDBAnalysisEngineAdapter.executeQuery(querySql, TemperatureData.class);
-        System.out.println(JSONObject.toJSONString(points));
+        // System.out.println(JSONObject.toJSONString(points));
+        points.forEach(point ->
+                System.out.println(JSONObject.toJSONString(point)));
 
     }
 

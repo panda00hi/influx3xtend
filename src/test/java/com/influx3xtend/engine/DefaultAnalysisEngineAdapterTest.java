@@ -3,7 +3,6 @@ package com.influx3xtend.engine;
 import com.alibaba.fastjson2.JSONObject;
 import com.influx3xtend.model.TemperatureData;
 import jakarta.annotation.Resource;
-import lombok.Data;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
@@ -23,7 +22,9 @@ class DefaultAnalysisEngineAdapterTest {
     @Test
     void executeQuery() {
         List<TemperatureData> dataList = defaultAnalysisEngineAdapter.executeQuery("SELECT * FROM temperature limit 10", TemperatureData.class);
-        System.out.println(JSONObject.toJSONString(dataList));
+        dataList.forEach(data -> {
+            System.out.println(JSONObject.toJSONString(data));
+        });
 
     }
 
