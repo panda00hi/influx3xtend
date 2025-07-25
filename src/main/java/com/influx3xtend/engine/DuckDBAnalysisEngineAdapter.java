@@ -3,6 +3,7 @@ package com.influx3xtend.engine;
 // Removed custom AnalysisException import
 
 import com.influxdb.v3.client.Point;
+import jakarta.annotation.Nonnull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -61,7 +62,7 @@ public class DuckDBAnalysisEngineAdapter implements AnalysisEngineAdapter {
      * @throws UnsupportedOperationException 始终抛出此异常
      */
     @Override
-    public void writePoints(List<Point> points) {
+    public void writePoints(@Nonnull List<Point> points) {
         throw new UnsupportedOperationException("DuckDBAnalysisEngineAdapter does not support writing data points.");
     }
 
@@ -73,7 +74,7 @@ public class DuckDBAnalysisEngineAdapter implements AnalysisEngineAdapter {
      * @return 查询结果列表，每个元素是 T 类型的实例
      */
     @Override
-    public <T> List<T> executeQuery(String query, Class<T> resultType) {
+    public <T> List<T> executeQuery(@Nonnull String query, @Nonnull Class<T> resultType) {
         if (query == null || query.trim().isEmpty()) {
             throw new IllegalArgumentException("Query string cannot be null or empty.");
         }

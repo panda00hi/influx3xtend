@@ -10,8 +10,8 @@ import org.springframework.context.annotation.Configuration;
  */
 @Data
 @Configuration
-@ConfigurationProperties(prefix = "influxdb")
-public class InfluxDBProperties {
+@ConfigurationProperties(prefix = "duckdb")
+public class DuckDBProperties {
 
     /**
      * InfluxDB服务器URL
@@ -32,7 +32,7 @@ public class InfluxDBProperties {
     /**
      * Parquet文件目录
      */
-    private String parquetDir = "./data/parquet";
+    private String parquetDirectory = "./data/parquet";
 
 
 

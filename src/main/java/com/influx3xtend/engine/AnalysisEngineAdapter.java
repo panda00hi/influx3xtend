@@ -1,6 +1,8 @@
 package com.influx3xtend.engine;
 
 import com.influxdb.v3.client.Point;
+import com.influxdb.v3.client.internal.InfluxDBClientImpl;
+import jakarta.annotation.Nonnull;
 
 import java.lang.reflect.Field;
 import java.util.List;
@@ -18,7 +20,7 @@ public interface AnalysisEngineAdapter {
      * @param <T>        结果对象的类型
      * @return 查询结果列表，每个元素是 T 类型的实例
      */
-    <T> List<T> executeQuery(String query, Class<T> resultType);
+    <T> List<T> executeQuery(@Nonnull String query, @Nonnull Class<T> resultType);
 
     /**
      * 使用 InfluxDB 3 的写入 API 写入数据点。
@@ -26,7 +28,7 @@ public interface AnalysisEngineAdapter {
      * @param points 要写入的数据点列表
      * @throws RuntimeException 如果写入失败
      */
-    void writePoints(List<Point> points);
+    void writePoints(@Nonnull List<Point> points);
 
 
     default Field[] getAllFields(Class<?> clazz) {

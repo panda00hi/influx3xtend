@@ -1,3 +1,17 @@
 spring:
   application:
     name: influx3xtend
+
+influxdb:
+  url: http://172.16.224.140:8181
+  token: apiv3_LWTnyE7ggfmGj88HWaGXO3r2dbqZNCLYN8gNyacJ-ZXt4EaZsVvz6lRpwUf4JCozRCIzyE1Q5DVz_5CfdSJXxw
+  database: xtend-test
+  parquet-dir: .db/data/influxdb3/local01/dbs/
+
+# 分析引擎配置
+engine:
+  enabled: true
+  type: duckdb # 适配器类型，可选：default（InfluxDB 3 Core）、duckdb
+  duckdb:
+    read-only: true
+#    dir: .db/data/influxdb3/local01/dbs/ # parquet文件目录，默认使用influxdb3.parquet-dir，也可自行指定
