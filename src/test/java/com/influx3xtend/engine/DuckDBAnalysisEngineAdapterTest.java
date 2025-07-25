@@ -25,10 +25,10 @@ class DuckDBAnalysisEngineAdapterTest {
     void executeQuery() {
 
         LocalDateTime startTime = LocalDateTime.of(2025, 4, 19, 0, 0, 0);
-        LocalDateTime endTime = startTime.plusDays(1);
+        LocalDateTime endTime = startTime.plusDays(2);
 
-        String querySql = DuckDBAnalysisEngineAdapter.buildQuery("temperature", startTime, endTime);
-        // String querySql = DuckDBAnalysisEngineAdapter.buildQuery("temperature", null, null);
+        // String querySql = duckDBAnalysisEngineAdapter.buildQuery("weather", startTime, endTime);
+        String querySql = duckDBAnalysisEngineAdapter.buildQuery("weather", null, null);
 
         List<TemperatureData> points = duckDBAnalysisEngineAdapter.executeQuery(querySql, TemperatureData.class);
         // System.out.println(JSONObject.toJSONString(points));

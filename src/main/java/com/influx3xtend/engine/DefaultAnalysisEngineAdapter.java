@@ -81,14 +81,14 @@ public class DefaultAnalysisEngineAdapter implements AnalysisEngineAdapter {
     @Override
     public <T> List<T> executeQuery(@Nonnull String query, @Nonnull Class<T> resultType) {
         long startTime = System.currentTimeMillis();
-        logger.debug("Executing InfluxDB query against database '{}' and mapping to {}: {}", database, resultType.getSimpleName(), query);
+        logger.info("Executing InfluxDB query against database '{}' and mapping to {}: {}", database, resultType.getSimpleName(), query);
 
         try (Stream<PointValues> stream = influxDBClient.queryPoints(query)) {
             List<T> resultList = stream.map(pointValues -> mapPointValuesToObject(pointValues, resultType))
                     .collect(Collectors.toList());
 
             long endTime = System.currentTimeMillis();
-            logger.debug("InfluxDB query executed successfully, returned {} rows mapped to {} cost:{}ms", resultList.size(), resultType.getSimpleName(), endTime - startTime);
+            logger.info("InfluxDB query executed successfully, returned {} rows mapped to {} cost:{}ms", resultList.size(), resultType.getSimpleName(), endTime - startTime);
             return resultList;
         } catch (Exception e) {
             logger.error("Failed to execute InfluxDB query against database '{}' and map to {}: {}", database, resultType.getSimpleName(), query, e);
@@ -109,11 +109,11 @@ public class DefaultAnalysisEngineAdapter implements AnalysisEngineAdapter {
             logger.warn("No points provided for writing.");
             return;
         }
-        logger.debug("Writing {} points to database '{}'", points.size(), database);
+        logger.info("Writing {} points to database '{}'", points.size(), database);
         try {
             // 使用默认写入选项
             influxDBClient.writePoints(points);
-            logger.debug("Successfully wrote {} points.", points.size());
+            logger.info("Successfully wrote {} points.", points.size());
         } catch (Exception e) {
             logger.error("Failed to write points to database '{}'", database, e);
             throw new RuntimeException("Failed to write points: " + e.getMessage(), e);

@@ -6,7 +6,7 @@ influxdb:
   url: http://172.16.224.140:8181
   token: apiv3_LWTnyE7ggfmGj88HWaGXO3r2dbqZNCLYN8gNyacJ-ZXt4EaZsVvz6lRpwUf4JCozRCIzyE1Q5DVz_5CfdSJXxw
   database: xtend-test
-  parquet-dir: .db/data/influxdb3/local01/dbs/
+  parquet-dir: db/data/influxdb3/local01/dbs/mydb-1/
 
 # 分析引擎配置
 engine:

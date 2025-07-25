@@ -1,7 +1,6 @@
 package com.influx3xtend.engine;
 
 import com.influxdb.v3.client.Point;
-import com.influxdb.v3.client.internal.InfluxDBClientImpl;
 import jakarta.annotation.Nonnull;
 
 import java.lang.reflect.Field;

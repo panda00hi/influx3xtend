@@ -1,9 +1,9 @@
 package com.influx3xtend.engine;
 
-// Removed custom AnalysisException import
 
 import com.influxdb.v3.client.Point;
 import jakarta.annotation.Nonnull;
+import org.duckdb.DuckDBConnection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -11,7 +11,6 @@ import org.springframework.stereotype.Service;
 import java.io.File;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
-import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -36,22 +35,18 @@ import java.util.stream.Collectors;
 public class DuckDBAnalysisEngineAdapter implements AnalysisEngineAdapter {
 
     private static final Logger logger = LoggerFactory.getLogger(DuckDBAnalysisEngineAdapter.class);
-
     /**
-     * DuckDB 连接实例 (内存模式)
+     * DuckDB 连接实例，默认只读
      */
-    private Connection duckdbConnection;
-
-    /**
-     * Parquet 文件存储目录 (从配置中获取)
-     */
-    private static final String PARQUET_BASE_DIR = "db/data/influxdb3/local01/dbs/mydb-1";
+    private final DuckDBConnection duckdbConnection;
+    private final String PARQUET_BASE_DIR;
 
     /**
      * 构造函数。
      */
-    public DuckDBAnalysisEngineAdapter() throws SQLException {
-        duckdbConnection = DriverManager.getConnection("jdbc:duckdb:");
+    public DuckDBAnalysisEngineAdapter(String parquetDir) throws SQLException {
+        this.duckdbConnection = (DuckDBConnection) DriverManager.getConnection("jdbc:duckdb:");
+        PARQUET_BASE_DIR = parquetDir;
         logger.info("DuckDBAnalysisEngineAdapter initialized with Parquet directory: {}", PARQUET_BASE_DIR);
     }
 
@@ -75,14 +70,14 @@ public class DuckDBAnalysisEngineAdapter implements AnalysisEngineAdapter {
      */
     @Override
     public <T> List<T> executeQuery(@Nonnull String query, @Nonnull Class<T> resultType) {
-        if (query == null || query.trim().isEmpty()) {
+        if (query.trim().isEmpty()) {
             throw new IllegalArgumentException("Query string cannot be null or empty.");
         }
 
         long startTime = System.currentTimeMillis();
         logger.info("Executing DuckDB query: {}", query);
 
-        try (Connection connection = duckdbConnection;
+        try (DuckDBConnection connection = duckdbConnection;
              Statement statement = connection.createStatement();
              ResultSet resultSet = statement.executeQuery(query)) {
 
@@ -115,7 +110,7 @@ public class DuckDBAnalysisEngineAdapter implements AnalysisEngineAdapter {
             }
 
             long endTime = System.currentTimeMillis();
-            logger.info("DuckDB query executed successfully, returned {} rows, cost: {}ms", resultList.size(), endTime - startTime);
+            logger.debug("DuckDB query executed successfully, returned {} rows, cost: {}ms", resultList.size(), endTime - startTime);
             return resultList;
 
         } catch (SQLException e) {
@@ -133,21 +128,25 @@ public class DuckDBAnalysisEngineAdapter implements AnalysisEngineAdapter {
      * 构建查询SQL
      * 若无时间范围，默认1000条
      */
-    public static String buildQuery(String table, LocalDateTime startTime, LocalDateTime endTime) {
+    public String buildQuery(String table, LocalDateTime startTime, LocalDateTime endTime) {
         List<String> paths = List.of();
         if (startTime != null && endTime != null) {
             paths = collectDirsByDateRange(table, startTime.toLocalDate(), endTime.toLocalDate());
         } else {
-            paths = List.of(PARQUET_BASE_DIR + "/" + table + "-1");
+            paths = List.of(PARQUET_BASE_DIR + table + "-1");
+            // 校验待查询表的目录存在
+            if (!new File(paths.get(0)).exists()) {
+                throw new IllegalArgumentException("Parquet directory does not exist: " + paths.get(0));
+            }
         }
 
         StringBuilder sql = new StringBuilder();
-        sql.append("SELECT * FROM parquet_scan(")
+        sql.append("SELECT * FROM parquet_scan([")
                 .append(
                         paths.stream()
                                 .map(p -> "'" + p + "/**/*.parquet'")
                                 .collect(Collectors.joining(", ")))
-                .append(")");
+                .append("])");
 
         if (startTime != null && endTime != null) {
             // 注意：duckDB目前只支持到秒级。所以要转秒时间戳，系统默认时区
@@ -167,14 +166,16 @@ public class DuckDBAnalysisEngineAdapter implements AnalysisEngineAdapter {
     /**
      * 根据时间范围收集目录
      */
-    public static List<String> collectDirsByDateRange(String table, LocalDate startDate, LocalDate endDate) {
+    public List<String> collectDirsByDateRange(String table, LocalDate startDate, LocalDate endDate) {
         List<String> dirs = new ArrayList<>();
         LocalDate date = startDate;
         while (!date.isAfter(endDate)) {
-            String dir = java.lang.String.format("%s/%s-1/%s", PARQUET_BASE_DIR, table, date);
-            if (new File(dir).exists()) {
-                dirs.add(dir);
+            String dir = String.format("%s/%s-1/%s", PARQUET_BASE_DIR, table, date);
+            // 目录不存在，可能目录错误或还未完成持久化parquet
+            if (!new File(dir).exists()) {
+                logger.debug("Found directory: {}", dir);
             }
+            dirs.add(dir);
             date = date.plusDays(1);
         }
         return dirs;

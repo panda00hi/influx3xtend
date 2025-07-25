@@ -37,4 +37,15 @@ public class Influx3xtendAutoConfiguration {
         }
     }
 
+    @Bean
+    public String getParquetDir(InfluxDBProperties properties, EngineProperties engineProperties) {
+        // 若启用分析引擎且指定了parquet目录，则返回该目录；否则返回influxdb3的parquet-dir目录
+        // 用途：支持用户自定义进行了数据同步操作，如将influxdb原本的数据文件，同步到其他位置，此时需要自行指定parquet目录
+        if (engineProperties.isEnabled() && engineProperties.getDuckdb().getParquetDirectory() != null) {
+            return engineProperties.getDuckdb().getParquetDirectory();
+        }
+        return properties.getParquetDir();
+    }
+
+
 }
