@@ -38,10 +38,11 @@ class DefaultAnalysisEngineAdapterTest {
 
     @Test
     void writePoints() {
-        // Generate weather data for the past    10 days, one point per minute
-        LocalDateTime baseTime = LocalDateTime.now().minusDays(10).truncatedTo(ChronoUnit.DAYS); // Start at midnight 10 days ago
+        // Generate weather data for the past days, one point per minute
+        // LocalDateTime baseTime = LocalDateTime.now().minusDays(10).truncatedTo(ChronoUnit.DAYS); // Start at midnight 10 days ago
+        LocalDateTime baseTime = LocalDateTime.of(2025, 6, 1, 0, 0);
         int minutesInDay = 24 * 60; // 1440 minutes in a day
-        int totalDays = 10;
+        int totalDays = 30;
         int batchSize = 1440; // Process one day's worth of points at a time (1440 minutes)
         int totalPoints = 0;
         Random random = new Random(); // Reuse Random instance for efficiency

@@ -1,12 +1,20 @@
 spring:
   application:
     name: influx3xtend
+  data:
+    mongodb:
+      authentication-database: admin
+      database: algo
+      host: localhost
+      port: 27017
+      username: root
+      password: root
 
 influxdb:
   url: http://172.16.224.140:8181
-  token: apiv3_LWTnyE7ggfmGj88HWaGXO3r2dbqZNCLYN8gNyacJ-ZXt4EaZsVvz6lRpwUf4JCozRCIzyE1Q5DVz_5CfdSJXxw
-  database: xtend-test
-  parquet-dir: db/data/influxdb3/local01/dbs/mydb-1/
+  token: apiv3_mZTOEq9FQh_TjZa47pgnAM9jQkL6Lzx4xBhXcfHTM1N1hheZDh24uHnBAzjG7p-1wWlboKhBrGyO5_-dfE_2bg
+  database: algo
+  parquet-dir: ~/.influxdb/data/node0/dbs
 
 # 分析引擎配置
 engine:

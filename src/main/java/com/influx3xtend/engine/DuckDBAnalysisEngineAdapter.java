@@ -133,7 +133,7 @@ public class DuckDBAnalysisEngineAdapter implements AnalysisEngineAdapter {
         if (startTime != null && endTime != null) {
             paths = collectDirsByDateRange(table, startTime.toLocalDate(), endTime.toLocalDate());
         } else {
-            paths = List.of(PARQUET_BASE_DIR + table + "-1");
+            paths = List.of(PARQUET_BASE_DIR + File.separator + table + "-*");
             // 校验待查询表的目录存在
             if (!new File(paths.get(0)).exists()) {
                 throw new IllegalArgumentException("Parquet directory does not exist: " + paths.get(0));
@@ -170,7 +170,8 @@ public class DuckDBAnalysisEngineAdapter implements AnalysisEngineAdapter {
         List<String> dirs = new ArrayList<>();
         LocalDate date = startDate;
         while (!date.isAfter(endDate)) {
-            String dir = String.format("%s/%s-1/%s", PARQUET_BASE_DIR, table, date);
+            // 注意：由于官方对数据逻辑删除等处理，持久化部分实际的数据库/表的后缀，不一定是“-1”，因此此处使用通配符匹配所有
+            String dir = String.format("%s/%s-*/%s", PARQUET_BASE_DIR, table, date);
             // 目录不存在，可能目录错误或还未完成持久化parquet
             if (!new File(dir).exists()) {
                 logger.debug("Found directory: {}", dir);
