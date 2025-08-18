@@ -1,7 +1,7 @@
 package com.influx3xtend.engine;
 
 import com.alibaba.fastjson2.JSONObject;
-import com.influx3xtend.model.TemperatureData;
+import com.influx3xtend.model.FeatureResult;
 import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -23,21 +23,31 @@ class DuckDBAnalysisEngineAdapterTest {
 
     @Test
     void executeQuery() {
+        String database = "algo";
+        String measurement = "feature_result";
+        String querySql = duckDBAnalysisEngineAdapter.buildQuery(database, measurement, null, null);
 
-        LocalDateTime startTime = LocalDateTime.of(2025, 4, 19, 0, 0, 0);
-        LocalDateTime endTime = startTime.plusDays(2);
-
-        // String querySql = duckDBAnalysisEngineAdapter.buildQuery("weather", startTime, endTime);
-        String querySql = duckDBAnalysisEngineAdapter.buildQuery("weather", null, null);
-
-        List<TemperatureData> points = duckDBAnalysisEngineAdapter.executeQuery(querySql, TemperatureData.class);
-        // System.out.println(JSONObject.toJSONString(points));
+        List<FeatureResult> points = duckDBAnalysisEngineAdapter.executeQuery(querySql, FeatureResult.class);
         points.forEach(point ->
                 System.out.println(JSONObject.toJSONString(point)));
+        System.out.printf("查询结果：%d 条%n", points.size());
 
     }
 
     @Test
-    void writePoints() {
+    void executeQueryByTimeRange() {
+        String database = "algo";
+        String measurement = "feature_result";
+        LocalDateTime startTime = LocalDateTime.of(2025, 8, 2, 23, 0, 0);
+        LocalDateTime endTime = startTime.plusHours(1);
+
+        String querySql = duckDBAnalysisEngineAdapter.buildQuery(database, measurement, startTime, endTime);
+
+        List<FeatureResult> points = duckDBAnalysisEngineAdapter.executeQuery(querySql, FeatureResult.class);
+        points.forEach(point ->
+                System.out.println(JSONObject.toJSONString(point)));
+        System.out.printf("查询结果：%d 条  查询范围： {%s}-{%s} %n", points.size(), startTime, endTime);
+
     }
+
 }

@@ -1,5 +1,6 @@
 package com.influx3xtend.model;
 
+import com.influx3xtend.annotation.XTime;
 import lombok.Data;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -20,6 +21,7 @@ public class FeatureResult implements Serializable {
 
     private Double value;
 
+    @XTime
     private Number key;
 }
 
