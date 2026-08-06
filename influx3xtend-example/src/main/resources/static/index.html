@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Influx3xtend 场景性能与多维数据测试控制台</title>
+    <!-- Google Fonts & ECharts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+    
+    <style>
+        :root {
+            --bg-primary: #0b0f19;
+            --bg-secondary: #131b2e;
+            --bg-card: rgba(23, 32, 54, 0.8);
+            --border-color: rgba(45, 65, 105, 0.5);
+            --accent-cyan: #00f2fe;
+            --accent-blue: #3a7bd5;
+            --accent-purple: #8a2be2;
+            --accent-green: #00e676;
+            --accent-orange: #ff9100;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --font-family: 'Outfit', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: var(--font-family);
+            min-height: 100vh;
+            padding: 24px;
+            background-image: 
+                radial-gradient(circle at 15% 15%, rgba(0, 242, 254, 0.04) 0%, transparent 45%),
+                radial-gradient(circle at 85% 85%, rgba(138, 43, 226, 0.04) 0%, transparent 45%);
+        }
+
+        /* 顶部 Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 24px;
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-title {
+            font-size: 20px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .tag-pill {
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            background: rgba(0, 242, 254, 0.1);
+            color: var(--accent-cyan);
+            border: 1px solid rgba(0, 242, 254, 0.3);
+            font-weight: 600;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        /* 选项卡 Tab 导航 (场景选择) */
+        .tabs-container {
+            display: flex;
+            gap: 8px;
+            background: var(--bg-secondary);
+            padding: 6px;
+            border-radius: 14px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 20px;
+            overflow-x: auto;
+        }
+
+        .tab-btn {
+            flex: 1;
+            min-width: 170px;
+            padding: 12px 16px;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 600;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, rgba(0, 242, 254, 0.15), rgba(58, 123, 213, 0.25));
+            color: #ffffff;
+            border: 1px solid rgba(0, 242, 254, 0.4);
+            box-shadow: 0 4px 15px rgba(0, 242, 254, 0.15);
+        }
+
+        /* 控制主工具栏 (手动点击 vs 自动轮询) */
+        .control-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 14px 20px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .btn-action {
+            background: linear-gradient(135deg, #00c6ff, #0072ff);
+            border: none;
+            color: #ffffff;
+            padding: 10px 22px;
+            border-radius: 10px;
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 15px rgba(0, 198, 255, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        .btn-action:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(0, 198, 255, 0.4);
+        }
+
+        .btn-action.success-flash {
+            background: linear-gradient(135deg, #00e676, #00b0ff);
+            box-shadow: 0 4px 15px rgba(0, 230, 118, 0.4);
+        }
+
+        .toggle-switch {
+            display: flex;
+            align-items: center;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 3px;
+            cursor: pointer;
+        }
+
+        .toggle-option {
+            padding: 6px 14px;
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            transition: all 0.2s ease;
+        }
+
+        .toggle-option.active {
+            background: var(--accent-cyan);
+            color: #0b0f19;
+            box-shadow: 0 2px 8px rgba(0, 242, 254, 0.4);
+        }
+
+        select.interval-select {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 12px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        /* 场景主体视图容器 */
+        .scene-view {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .scene-view.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* API 表现与性能统计条 */
+        .perf-summary-bar {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+            margin-bottom: 20px;
+        }
+
+        .perf-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 14px 16px;
+        }
+
+        .perf-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .perf-val {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--accent-cyan);
+            font-family: var(--font-mono);
+        }
+
+        /* 图表容器 */
+        .chart-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .chart-element {
+            width: 100%;
+            height: 380px;
+            min-height: 380px;
+        }
+
+        /* JSON Inspector 原始数据分析面板 */
+        .json-inspector {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 16px;
+            margin-top: 16px;
+        }
+
+        .json-inspector-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        pre.json-code {
+            background: #080c14;
+            color: #38bdf8;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            padding: 12px;
+            border-radius: 8px;
+            max-height: 220px;
+            overflow-y: auto;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 顶部 Header -->
+    <div class="header">
+        <div class="header-left">
+            <div class="header-title">Influx3xtend 场景性能与多维数据测试控制台</div>
+            <span class="tag-pill">API Server: localhost:8089</span>
+        </div>
+        <div class="header-right">
+            <div id="status-indicator" style="display: flex; align-items: center; gap: 6px; font-weight: 600; color: var(--accent-green);">
+                <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--accent-green);"></span>
+                系统正常运行中
+            </div>
+        </div>
+    </div>
+
+    <!-- 场景切换 Tab 导航（一次专注展示一个场景） -->
+    <div class="tabs-container">
+        <button class="tab-btn active" id="tab-btn-1" onclick="selectTab(1)">
+            🌡️ 场景 1: 近实时 WAL 遥测
+        </button>
+        <button class="tab-btn" id="tab-btn-2" onclick="selectTab(2)">
+            ⚡ 场景 2: 10kHz 示波器波形 (1000点)
+        </button>
+        <button class="tab-btn" id="tab-btn-3" onclick="selectTab(3)">
+            📊 场景 3: 5s 桶二次降采样
+        </button>
+        <button class="tab-btn" id="tab-btn-4" onclick="selectTab(4)">
+            📈 场景 4: 600,000 点全量波形
+        </button>
+        <button class="tab-btn" id="tab-btn-5" onclick="selectTab(5)">
+            🎯 场景 5: 最新设备工况点
+        </button>
+    </div>
+
+    <!-- 全局控制栏 (切换 [手动点击] 与 [自动轮询] 及 [查询时间跨度]) -->
+    <div class="control-bar">
+        <div class="control-group">
+            <button class="btn-action" id="btn-exec-query" onclick="triggerCurrentSceneQuery(true)">
+                ▶ 立即执行场景查询
+            </button>
+            
+            <div class="toggle-switch" onclick="togglePollingMode()">
+                <div class="toggle-option active" id="opt-manual">手动触发</div>
+                <div class="toggle-option" id="opt-auto">自动轮询</div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-secondary);">
+                <span>时间范围:</span>
+                <select class="interval-select" id="time-range-minutes" onchange="onShortcutRangeChange()" style="background: rgba(0, 242, 254, 0.1); border-color: rgba(0, 242, 254, 0.3); font-weight: 600; color: #00f2fe;">
+                    <option value="1">1 分钟 (极速实时)</option>
+                    <option value="15" selected>15 分钟 (近实时 WAL)</option>
+                    <option value="60">1 小时 (冷热混合)</option>
+                    <option value="720">12 小时 (冷热双引擎)</option>
+                    <option value="1440">24 小时 (触发 DuckDB)</option>
+                    <option value="10080">7 天 (触发 DuckDB)</option>
+                    <option value="43200">30 天 (触发 DuckDB)</option>
+                    <option value="custom">🗓️ 自定义指定区间...</option>
+                </select>
+            </div>
+
+            <div id="custom-time-container" style="display: none; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); background: rgba(0, 242, 254, 0.05); border: 1px dashed rgba(0, 242, 254, 0.25); padding: 4px 10px; border-radius: 8px;">
+                <span>指定起止:</span>
+                <input type="datetime-local" step="1" id="custom-start-time" onchange="onCustomTimeInputChange()" style="background: rgba(0, 242, 254, 0.1); border: 1px solid rgba(0, 242, 254, 0.4); border-radius: 6px; color: #00f2fe; padding: 3px 8px; font-size: 11px; font-family: monospace;">
+                <span>至</span>
+                <input type="datetime-local" step="1" id="custom-end-time" onchange="onCustomTimeInputChange()" style="background: rgba(0, 242, 254, 0.1); border: 1px solid rgba(0, 242, 254, 0.4); border-radius: 6px; color: #00f2fe; padding: 3px 8px; font-size: 11px; font-family: monospace;">
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-secondary);">
+                <span>最大点数 (Limit):</span>
+                <select class="interval-select" id="max-limit-select" onchange="triggerCurrentSceneQuery(true)" style="background: rgba(0, 242, 254, 0.1); border-color: rgba(0, 242, 254, 0.3); font-weight: 600; color: #00f2fe;">
+                    <option value="1000">1,000 点</option>
+                    <option value="10000">10,000 点</option>
+                    <option value="100000">100,000 点</option>
+                    <option value="600000" selected>600,000 点 (默认上限)</option>
+                    <option value="1000000">1,000,000 点</option>
+                </select>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-secondary);">
+                <span>轮询间隔:</span>
+                <select class="interval-select" id="poll-interval" onchange="changeInterval()">
+                    <option value="1000">1.0 秒</option>
+                    <option value="2000" selected>2.0 秒</option>
+                    <option value="5000">5.0 秒</option>
+                </select>
+            </div>
+        </div>
+
+        <div style="font-size: 12px; color: var(--text-muted);" id="last-update-time">
+            上一次查询时间: --
+        </div>
+    </div>
+
+    <!-- ==================== 场景 1 视图 ==================== -->
+    <div class="scene-view active" id="view-scene-1">
+        <div class="perf-summary-bar" style="grid-template-columns: repeat(5, 1fr);">
+            <div class="perf-card">
+                <div class="perf-label">请求接口</div>
+                <div class="perf-val" style="font-size: 13px; color: #fff;">GET /api/edge/telemetry/query</div>
+            </div>
+            <div class="perf-card">
+                <div class="perf-label">引擎总耗时</div>
+                <div class="perf-val" id="s1-engine-time">-- ms</div>
+            </div>
+            <div class="perf-card">
+                <div class="perf-label">HTTP 网络延时</div>
+                <div class="perf-val" id="s1-http-time">-- ms</div>
+            </div>
+            <div class="perf-card" style="border-color: rgba(0, 242, 254, 0.3);">
+                <div class="perf-label">⚡ Influx3 实时切片</div>
+                <div class="perf-val" id="s1-realtime-rows" style="color: var(--accent-cyan);">-- 行</div>
+            </div>
+            <div class="perf-card" style="border-color: rgba(255, 145, 0, 0.4); background: rgba(255, 145, 0, 0.05);">
+                <div class="perf-label">🦆 DuckDB 历史切片</div>
+                <div class="perf-val" id="s1-duckdb-rows" style="color: var(--accent-orange);">-- 行</div>
+            </div>
+        </div>
+
+        <div class="chart-box">
+            <div id="chart-s1" class="chart-element"></div>
+        </div>
+
+        <div class="json-inspector">
+            <div class="json-inspector-title">
+                <span>API 原始 JSON 响应预览 (Scenario 1)</span>
+                <span id="s1-status" style="color: var(--accent-green)">HTTP 200 OK</span>
+            </div>
+            <pre class="json-code" id="s1-json">等待点击执行或开启轮询...</pre>
+        </div>
+    </div>
+
+    <!-- ==================== 场景 2 视图 ==================== -->
+    <div class="scene-view" id="view-scene-2">
+        <div class="perf-summary-bar">
+            <div class="perf-card">
+                <div class="perf-label">请求接口</div>
+                <div class="perf-val" style="font-size: 13px; color: #fff;">GET /query (Limit=1,000)</div>
+            </div>
+            <div class="perf-card">
+                <div class="perf-label">底层引擎耗时</div>
+                <div class="perf-val" id="s2-engine-time">-- ms</div>
+            </div>
+            <div class="perf-card">
+                <div class="perf-label">HTTP 网络总耗时</div>
+                <div class="perf-val" id="s2-http-time">-- ms</div>
+            </div>
+            <div class="perf-card">
+                <div class="perf-label">采样点数 (10kHz 前1000点)</div>
+                <div class="perf-val" id="s2-rows">-- 点</div>
+            </div>
+        </div>
+
+        <div class="chart-box">
+            <div id="chart-s2" class="chart-element"></div>
+        </div>
+
+        <div class="json-inspector">
+            <div class="json-inspector-title">
+                <span>API 原始 JSON 响应预览 (Scenario 2)</span>
+                <span id="s2-status" style="color: var(--accent-green)">HTTP 200 OK</span>
+            </div>
+            <pre class="json-code" id="s2-json">等待点击执行或开启轮询...</pre>
+        </div>
+    </div>
+
+    <!-- ==================== 场景 3 视图 ==================== -->
+    <div class="scene-view" id="view-scene-3">
+        <div class="perf-summary-bar">
+            <div class="perf-card">
+                <div class="perf-label">请求接口</div>
+                <div class="perf-val" style="font-size: 13px; color: #fff;">GET /api/edge/telemetry/aggregate</div>
+            </div>
+            <div class="perf-card">
+                <div class="perf-label">底层引擎耗时</div>
+                <div class="perf-val" id="s3-engine-time">-- ms</div>
+            </div>
+            <div class="perf-card">
+                <div class="perf-label">HTTP 网络总耗时</div>
+                <div class="perf-val" id="s3-http-time">-- ms</div>
+            </div>
+            <div class="perf-card">
+                <div class="perf-label">降采样聚合桶数量</div>
+                <div class="perf-val" id="s3-rows">-- 桶</div>
+            </div>
+        </div>
+
+        <div class="chart-box">
+            <div id="chart-s3" class="chart-element"></div>
+        </div>
+
+        <div class="json-inspector">
+            <div class="json-inspector-title">
+                <span>API 原始 JSON 响应预览 (Scenario 3)</span>
+                <span id="s3-status" style="color: var(--accent-green)">HTTP 200 OK</span>
+            </div>
+            <pre class="json-code" id="s3-json">等待点击执行或开启轮询...</pre>
+        </div>
+    </div>
+
+    <!-- ==================== 场景 4 视图 ==================== -->
+    <div class="scene-view" id="view-scene-4">
+        <div class="perf-summary-bar">
+            <div class="perf-card">
+                <div class="perf-label">请求接口</div>
+                <div class="perf-val" style="font-size: 13px; color: #fff;">GET /query (Limit=600,000)</div>
+            </div>
+            <div class="perf-card">
+                <div class="perf-label">底层引擎耗时</div>
+                <div class="perf-val" id="s4-engine-time">-- ms</div>
+            </div>
+            <div class="perf-card">
+                <div class="perf-label">HTTP 网络总耗时</div>
+                <div class="perf-val" id="s4-http-time">-- ms</div>
+            </div>
+            <div class="perf-card">
+                <div class="perf-label">全量 10kHz 采样点数</div>
+                <div class="perf-val" id="s4-rows">-- 点</div>
+            </div>
+        </div>
+
+        <div class="chart-box">
+            <div id="chart-s4" class="chart-element"></div>
+        </div>
+
+        <div class="json-inspector">
+            <div class="json-inspector-title">
+                <span>API 原始 JSON 响应预览 (Scenario 4)</span>
+                <span id="s4-status" style="color: var(--accent-green)">HTTP 200 OK</span>
+            </div>
+            <pre class="json-code" id="s4-json">等待点击执行或开启轮询...</pre>
+        </div>
+    </div>
+
+    <!-- ==================== 场景 5 视图 ==================== -->
+    <div class="scene-view" id="view-scene-5">
+        <div class="perf-summary-bar">
+            <div class="perf-card">
+                <div class="perf-label">请求接口</div>
+                <div class="perf-val" style="font-size: 13px; color: #fff;">GET /api/edge/telemetry/latest</div>
+            </div>
+            <div class="perf-card">
+                <div class="perf-label">底层引擎耗时</div>
+                <div class="perf-val" id="s5-engine-time">-- ms</div>
+            </div>
+            <div class="perf-card">
+                <div class="perf-label">HTTP 网络总耗时</div>
+                <div class="perf-val" id="s5-http-time">-- ms</div>
+            </div>
+            <div class="perf-card">
+                <div class="perf-label">最新工况状态</div>
+                <div class="perf-val" id="s5-status-val" style="color: var(--accent-green)">Normal (1.0)</div>
+            </div>
+        </div>
+
+        <div class="chart-box" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
+            <div style="background: rgba(0,242,254,0.05); border: 1px solid rgba(0,242,254,0.2); padding: 30px; border-radius: 16px; text-align: center;">
+                <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 10px;">最新实时温度</div>
+                <div id="s5-temp" style="font-size: 42px; font-weight: 700; color: var(--accent-cyan);">-- °C</div>
+            </div>
+            <div style="background: rgba(255,145,0,0.05); border: 1px solid rgba(255,145,0,0.2); padding: 30px; border-radius: 16px; text-align: center;">
+                <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 10px;">最新实时湿度</div>
+                <div id="s5-hum" style="font-size: 42px; font-weight: 700; color: var(--accent-orange);">-- %</div>
+            </div>
+            <div style="background: rgba(0,230,118,0.05); border: 1px solid rgba(0,230,118,0.2); padding: 30px; border-radius: 16px; text-align: center;">
+                <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 10px;">电机工作状态</div>
+                <div id="s5-motor" style="font-size: 42px; font-weight: 700; color: var(--accent-green);">运行中</div>
+            </div>
+        </div>
+
+        <div class="json-inspector">
+            <div class="json-inspector-title">
+                <span>API 原始 JSON 响应预览 (Scenario 5)</span>
+                <span id="s5-status" style="color: var(--accent-green)">HTTP 200 OK</span>
+            </div>
+            <pre class="json-code" id="s5-json">等待点击执行或开启轮询...</pre>
+        </div>
+    </div>
+
+    <!-- JavaScript 逻辑代码 -->
+    <script>
+        const API_BASE = window.location.protocol.startsWith('http') ? window.location.origin : 'http://localhost:8089';
+        let currentTab = 1;
+        let isAutoPolling = false;
+        let timer = null;
+
+        // ECharts 图表变量
+        let chartS1 = null;
+        let chartS2 = null;
+        let chartS3 = null;
+        let chartS4 = null;
+
+        const darkStyle = {
+            backgroundColor: 'transparent',
+            grid: { top: 35, right: 25, bottom: 25, left: 45, containLabel: true },
+            tooltip: { trigger: 'axis', backgroundColor: '#131b2e', borderColor: '#2d3c5a', textStyle: { color: '#f1f5f9' } },
+            xAxis: { type: 'category', axisLine: { lineStyle: { color: '#2d3c5a' } }, axisLabel: { color: '#94a3b8' } },
+            yAxis: { type: 'value', splitLine: { lineStyle: { color: 'rgba(45, 65, 105, 0.3)', type: 'dashed' } }, axisLabel: { color: '#94a3b8' } }
+        };
+
+        // 避免大数据量下 JSON.stringify 导致主线程 DOM 卡死 (超过 10 000 点裁剪 preview)
+        function formatJsonPreview(json) {
+            if (!json) return '';
+            if (json.data && json.data.length > 10) {
+                const sample = json.data.slice(0, 5);
+                const jsonCopy = {
+                    ...json,
+                    data: sample,
+                    _note: `[UI Performance Optimization] Truncated ${json.data.length - 5} items for smooth 60fps DOM rendering. Total records: ${json.data.length}`
+                };
+                return JSON.stringify(jsonCopy, null, 2);
+            }
+            return JSON.stringify(json, null, 2);
+        }
+
+        function getOrInitChart(chartVar, domId, option) {
+            const dom = document.getElementById(domId);
+            if (!dom) return null;
+            let chart = echarts.getInstanceByDom(dom);
+            if (!chart) {
+                chart = echarts.init(dom);
+                chart.setOption(option);
+            }
+            return chart;
+        }
+
+        function initAllCharts() {
+            chartS1 = getOrInitChart(chartS1, 'chart-s1', {
+                ...darkStyle,
+                color: ['#00f2fe', '#ff9100'],
+                legend: { data: ['温度 (°C)', '湿度 (%)'], textStyle: { color: '#94a3b8' } },
+                series: [{ name: '温度 (°C)', type: 'line', smooth: true, data: [] }, { name: '湿度 (%)', type: 'line', smooth: true, data: [] }]
+            });
+
+            chartS2 = getOrInitChart(chartS2, 'chart-s2', {
+                ...darkStyle,
+                color: ['#00e676', '#8a2be2'],
+                legend: { data: ['振动 (g)', '扭矩 (N·m)'], textStyle: { color: '#94a3b8' } },
+                xAxis: { type: 'value', axisLine: { lineStyle: { color: '#2d3c5a' } }, axisLabel: { color: '#94a3b8' } },
+                yAxis: [
+                    { type: 'value', name: '振动 (g)', splitLine: { show: false }, axisLabel: { color: '#00e676' } },
+                    { type: 'value', name: '扭矩 (N·m)', splitLine: { lineStyle: { color: 'rgba(45, 65, 105, 0.3)', type: 'dashed' } }, axisLabel: { color: '#8a2be2' } }
+                ],
+                series: [
+                    { name: '振动 (g)', type: 'line', showSymbol: false, sampling: 'lttb', large: true, data: [] },
+                    { name: '扭矩 (N·m)', type: 'line', yAxisIndex: 1, showSymbol: false, sampling: 'lttb', large: true, data: [] }
+                ]
+            });
+
+            chartS3 = getOrInitChart(chartS3, 'chart-s3', {
+                ...darkStyle,
+                color: ['#00f2fe', '#ff5252', '#4caf50'],
+                legend: { data: ['5s 均值 (AVG)', '最大值 (MAX)', '最小值 (MIN)'], textStyle: { color: '#94a3b8' } },
+                series: [{ name: '5s 均值 (AVG)', type: 'line', smooth: true, data: [] }, { name: '最大值 (MAX)', type: 'line', smooth: true, lineStyle: { type: 'dashed' }, data: [] }, { name: '最小值 (MIN)', type: 'line', smooth: true, lineStyle: { type: 'dashed' }, data: [] }]
+            });
+
+            chartS4 = getOrInitChart(chartS4, 'chart-s4', {
+                ...darkStyle,
+                color: ['#00c6ff'],
+                legend: { data: ['600,000点 密集振动波形'], textStyle: { color: '#94a3b8' } },
+                xAxis: { type: 'value', axisLine: { lineStyle: { color: '#2d3c5a' } }, axisLabel: { color: '#94a3b8' } },
+                dataZoom: [
+                    {
+                        type: 'inside',
+                        start: 70,
+                        end: 100
+                    },
+                    {
+                        type: 'slider',
+                        show: true,
+                        backgroundColor: 'rgba(19, 27, 46, 0.6)',
+                        borderColor: '#2d3c5a',
+                        fillerColor: 'rgba(0, 242, 254, 0.2)',
+                        handleStyle: { color: '#00f2fe' },
+                        textStyle: { color: '#94a3b8' },
+                        start: 70,
+                        end: 100
+                    }
+                ],
+                series: [{
+                    name: '600,000点 密集振动波形',
+                    type: 'line',
+                    showSymbol: false,
+                    sampling: 'lttb',
+                    large: true,
+                    largeThreshold: 500,
+                    data: []
+                }]
+            });
+        }
+
+        function selectTab(id) {
+            currentTab = id;
+            document.querySelectorAll('.tab-btn').forEach((btn, idx) => {
+                btn.classList.toggle('active', idx + 1 === id);
+            });
+            document.querySelectorAll('.scene-view').forEach((view, idx) => {
+                view.classList.toggle('active', idx + 1 === id);
+            });
+
+            initAllCharts();
+            if (id === 1 && chartS1) chartS1.resize();
+            if (id === 2 && chartS2) chartS2.resize();
+            if (id === 3 && chartS3) chartS3.resize();
+            if (id === 4 && chartS4) chartS4.resize();
+
+            triggerCurrentSceneQuery(true);
+        }
+
+        function togglePollingMode() {
+            isAutoPolling = !isAutoPolling;
+            document.getElementById('opt-manual').classList.toggle('active', !isAutoPolling);
+            document.getElementById('opt-auto').classList.toggle('active', isAutoPolling);
+
+            if (isAutoPolling) {
+                startPolling();
+            } else {
+                stopPolling();
+            }
+        }
+
+        function startPolling() {
+            stopPolling();
+            const interval = parseInt(document.getElementById('poll-interval').value);
+            triggerCurrentSceneQuery(false);
+            timer = setInterval(() => triggerCurrentSceneQuery(false), interval);
+        }
+
+        function stopPolling() {
+            if (timer) {
+                clearInterval(timer);
+                timer = null;
+            }
+        }
+
+        function changeInterval() {
+            if (isAutoPolling) {
+                startPolling();
+            }
+        }
+
+        async function triggerCurrentSceneQuery(userClicked = false) {
+            const btn = document.getElementById('btn-exec-query');
+            if (userClicked) {
+                btn.innerText = '⏳ 查询中...';
+                btn.style.opacity = '0.7';
+            }
+
+            document.getElementById('last-update-time').innerText = `上一次查询时间: ${new Date().toLocaleTimeString()}`;
+
+            let execTimeMs = 0;
+            if (currentTab === 1) execTimeMs = await runScene1();
+            else if (currentTab === 2) execTimeMs = await runScene2();
+            else if (currentTab === 3) execTimeMs = await runScene3();
+            else if (currentTab === 4) execTimeMs = await runScene4();
+            else if (currentTab === 5) execTimeMs = await runScene5();
+
+            if (userClicked) {
+                btn.innerText = `✓ 查询成功 (${execTimeMs || 0}ms)`;
+                btn.classList.add('success-flash');
+                setTimeout(() => {
+                    btn.innerText = '▶ 立即执行场景查询';
+                    btn.style.opacity = '1';
+                    btn.classList.remove('success-flash');
+                }, 1000);
+            }
+        }
+
+        function getTimeRangeQueryParams() {
+            const rangeSelect = document.getElementById('time-range-minutes');
+            const isCustom = rangeSelect && rangeSelect.value === 'custom';
+
+            if (isCustom) {
+                const startTimeInput = document.getElementById('custom-start-time').value;
+                const endTimeInput = document.getElementById('custom-end-time').value;
+                if (startTimeInput && endTimeInput) {
+                    const sIso = new Date(startTimeInput).toISOString();
+                    const eIso = new Date(endTimeInput).toISOString();
+                    return `&startTime=${encodeURIComponent(sIso)}&endTime=${encodeURIComponent(eIso)}`;
+                }
+            }
+
+            const minutes = (rangeSelect && rangeSelect.value !== 'custom') ? rangeSelect.value : 15;
+            return `&minutes=${minutes}`;
+        }
+
+        function onShortcutRangeChange() {
+            const rangeSelect = document.getElementById('time-range-minutes');
+            const customContainer = document.getElementById('custom-time-container');
+
+            if (rangeSelect.value === 'custom') {
+                if (customContainer) customContainer.style.display = 'flex';
+                const startInput = document.getElementById('custom-start-time');
+                const endInput = document.getElementById('custom-end-time');
+                if (!startInput.value || !endInput.value) {
+                    const now = new Date();
+                    const start = new Date(now.getTime() - 15 * 60000);
+                    startInput.value = formatLocalDatetime(start);
+                    endInput.value = formatLocalDatetime(now);
+                }
+            } else {
+                if (customContainer) customContainer.style.display = 'none';
+            }
+
+            triggerCurrentSceneQuery(true);
+        }
+
+        function onCustomTimeInputChange() {
+            triggerCurrentSceneQuery(true);
+        }
+
+        function formatLocalDatetime(date) {
+            const pad = num => String(num).padStart(2, '0');
+            return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+        }
+
+        async function runScene1() {
+            if (currentTab !== 1) return 0;
+            const t0 = performance.now();
+            try {
+                const timeParams = getTimeRangeQueryParams();
+                const limit = document.getElementById('max-limit-select').value;
+                const res = await fetch(`${API_BASE}/api/edge/telemetry/query?deviceId=DEV_REG_001${timeParams}&limit=${limit}`);
+                const httpMs = (performance.now() - t0).toFixed(1);
+                const json = await res.json();
+
+                if (currentTab !== 1) return json.executionTimeMs;
+
+                document.getElementById('s1-engine-time').innerText = `${json.executionTimeMs || 0} ms`;
+                document.getElementById('s1-http-time').innerText = `${httpMs} ms`;
+                document.getElementById('s1-realtime-rows').innerText = `${json.realtimeRowsCount || 0} 行`;
+                document.getElementById('s1-duckdb-rows').innerText = `${json.historicalRowsCount || 0} 行`;
+                document.getElementById('s1-json').innerText = formatJsonPreview(json);
+
+                initAllCharts();
+                if (json.data && json.data.length > 0) {
+                    const times = json.data.map(item => new Date(item.time).toLocaleTimeString());
+                    const temps = json.data.map(item => item.temperature);
+                    const hums = json.data.map(item => item.humidity);
+                    chartS1.setOption({ xAxis: { data: times }, series: [{ data: temps }, { data: hums }] });
+                } else {
+                    chartS1.setOption({ series: [{ data: [] }, { data: [] }] });
+                }
+                if (chartS1) chartS1.resize();
+                return json.executionTimeMs;
+            } catch (e) {
+                if (currentTab === 1) {
+                    document.getElementById('s1-json').innerText = `请求失败: ${e}`;
+                }
+            }
+        }
+
+        async function runScene2() {
+            if (currentTab !== 2) return 0;
+            const t0 = performance.now();
+            try {
+                const timeParams = getTimeRangeQueryParams();
+                const limit = document.getElementById('max-limit-select').value;
+                const res = await fetch(`${API_BASE}/api/edge/telemetry/query?deviceId=DEV_HF_002&measurement=high_frequency_waveform${timeParams}&limit=${limit}`);
+                const httpMs = (performance.now() - t0).toFixed(1);
+                const json = await res.json();
+
+                if (currentTab !== 2) return json.executionTimeMs;
+
+                document.getElementById('s2-engine-time').innerText = `${json.executionTimeMs || 0} ms`;
+                document.getElementById('s2-http-time').innerText = `${httpMs} ms`;
+                document.getElementById('s2-rows').innerText = `${json.data ? json.data.length : 0} 点`;
+                document.getElementById('s2-json').innerText = formatJsonPreview(json);
+
+                initAllCharts();
+                if (json.data && json.data.length > 0) {
+                    const vibes = json.data.map((item, idx) => [idx, item.vibration]);
+                    const torques = json.data.map((item, idx) => [idx, item.torque || 300]);
+                    chartS2.setOption({ series: [{ data: vibes }, { data: torques }] });
+                } else {
+                    chartS2.setOption({ series: [{ data: [] }, { data: [] }] });
+                }
+                if (chartS2) chartS2.resize();
+                return json.executionTimeMs;
+            } catch (e) {
+                if (currentTab === 2) {
+                    document.getElementById('s2-json').innerText = `请求失败: ${e}`;
+                }
+            }
+        }
+
+        async function runScene3() {
+            if (currentTab !== 3) return 0;
+            const t0 = performance.now();
+            try {
+                const timeParams = getTimeRangeQueryParams();
+                const res = await fetch(`${API_BASE}/api/edge/telemetry/aggregate?measurement=regular_telemetry&field=temperature&bucketSeconds=5${timeParams}`);
+                const httpMs = (performance.now() - t0).toFixed(1);
+                const json = await res.json();
+
+                if (currentTab !== 3) return json.executionTimeMs;
+
+                document.getElementById('s3-engine-time').innerText = `${json.executionTimeMs || 0} ms`;
+                document.getElementById('s3-http-time').innerText = `${httpMs} ms`;
+                document.getElementById('s3-rows').innerText = `${json.data ? json.data.length : 0} 桶`;
+                document.getElementById('s3-json').innerText = formatJsonPreview(json);
+
+                initAllCharts();
+                if (json.data && json.data.length > 0) {
+                    const times = json.data.map(item => new Date(item.time).toLocaleTimeString());
+                    const avgs = json.data.map(item => item.avgTemperature || item.avg_temperature || 25);
+                    const maxs = json.data.map(item => item.maxTemperature || item.max_temperature || 27);
+                    const mins = json.data.map(item => item.minTemperature || item.min_temperature || 23);
+                    chartS3.setOption({ xAxis: { data: times }, series: [{ data: avgs }, { data: maxs }, { data: mins }] });
+                } else {
+                    chartS3.setOption({ series: [{ data: [] }, { data: [] }, { data: [] }] });
+                }
+                if (chartS3) chartS3.resize();
+                return json.executionTimeMs;
+            } catch (e) {
+                if (currentTab === 3) {
+                    document.getElementById('s3-json').innerText = `请求失败: ${e}`;
+                }
+            }
+        }
+
+        async function runScene4() {
+            if (currentTab !== 4) return 0;
+            const t0 = performance.now();
+            try {
+                const timeParams = getTimeRangeQueryParams();
+                const limit = document.getElementById('max-limit-select').value;
+                const res = await fetch(`${API_BASE}/api/edge/telemetry/query?deviceId=DEV_HF_002&measurement=high_frequency_waveform${timeParams}&limit=${limit}`);
+                const httpMs = (performance.now() - t0).toFixed(1);
+                const json = await res.json();
+
+                if (currentTab !== 4) return json.executionTimeMs;
+
+                document.getElementById('s4-engine-time').innerText = `${json.executionTimeMs || 0} ms`;
+                document.getElementById('s4-http-time').innerText = `${httpMs} ms`;
+                document.getElementById('s4-rows').innerText = `${json.data ? json.data.length : 0} 点`;
+                document.getElementById('s4-json').innerText = formatJsonPreview(json);
+
+                initAllCharts();
+                if (json.data && json.data.length > 0) {
+                    const points = json.data.map((item, idx) => [idx, item.vibration]);
+                    chartS4.setOption({ series: [{ data: points }] });
+                } else {
+                    chartS4.setOption({ series: [{ data: [] }] });
+                }
+                if (chartS4) chartS4.resize();
+                return json.executionTimeMs;
+            } catch (e) {
+                if (currentTab === 4) {
+                    document.getElementById('s4-json').innerText = `请求失败: ${e}`;
+                }
+            }
+        }
+
+        async function runScene5() {
+            if (currentTab !== 5) return 0;
+            const t0 = performance.now();
+            try {
+                const res = await fetch(`${API_BASE}/api/edge/telemetry/latest?deviceId=DEV_REG_001`);
+                const httpMs = (performance.now() - t0).toFixed(1);
+                const json = await res.json();
+
+                if (currentTab !== 5) return json.executionTimeMs;
+
+                document.getElementById('s5-engine-time').innerText = `${json.executionTimeMs || 0} ms`;
+                document.getElementById('s5-http-time').innerText = `${httpMs} ms`;
+                document.getElementById('s5-json').innerText = formatJsonPreview(json);
+
+                if (json.code === 200 && json.latestData) {
+                    const d = json.latestData;
+                    document.getElementById('s5-temp').innerText = `${(d.temperature || 0).toFixed(1)} °C`;
+                    document.getElementById('s5-hum').innerText = `${(d.humidity || 0).toFixed(1)} %`;
+                    document.getElementById('s5-motor').innerText = (d.motorState === 1 || d.motorState === 1.0) ? '运行中' : '已停止';
+                }
+                return json.executionTimeMs;
+            } catch (e) {
+                if (currentTab === 5) {
+                    document.getElementById('s5-json').innerText = `请求失败: ${e}`;
+                }
+            }
+        }
+
+        // 页面初始化：初始化所有图表并触发当前场景查询
+        window.addEventListener('DOMContentLoaded', () => {
+            initAllCharts();
+            triggerCurrentSceneQuery(false);
+        });
+
+        window.addEventListener('resize', () => {
+            if (chartS1) chartS1.resize();
+            if (chartS2) chartS2.resize();
+            if (chartS3) chartS3.resize();
+            if (chartS4) chartS4.resize();
+        });
+    </script>
+</body>
+</html>

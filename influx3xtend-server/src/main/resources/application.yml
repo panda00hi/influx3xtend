@@ -1,0 +1,19 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: influx3xtend-server
+  threads:
+    virtual:
+      enabled: true
+
+influx3xtend:
+  influx3:
+    host: "http://localhost:8181"
+    token: "${INFLUXDB3_TOKEN:apiv3_-VpAAyseQdfg0gHFV58xLIg90xsXzL-Ww3G1z8dkJNpWBT1Os-07ox5mCpBGc16-lJF1x35SpnZWPh_0AoRtcQ}"
+    database: "tsdb"
+  storage:
+    endpoint: "https://s3.us-east-1.amazonaws.com"
+    bucket: "tsdb-parquet-bucket"
+  duckdbMaxMemory: "4GB"

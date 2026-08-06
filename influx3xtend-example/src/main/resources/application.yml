@@ -1,0 +1,25 @@
+server:
+  port: 8089
+
+influx3xtend:
+  influx3:
+    host: "http://localhost:8181"
+    token: "${INFLUXDB3_TOKEN:apiv3_-VpAAyseQdfg0gHFV58xLIg90xsXzL-Ww3G1z8dkJNpWBT1Os-07ox5mCpBGc16-lJF1x35SpnZWPh_0AoRtcQ}"
+    database: "edge_iot_db"
+  storage:
+    local-storage-dir: "${user.home}/.influxdb/data"
+  duckdb-max-memory: "2GB"
+
+mqtt:
+  broker:
+    url: "tcp://localhost:1883"
+  client:
+    id: "influx3xtend_spring_subscriber"
+  topic: "iot/telemetry/+"
+  username: "influx3xtend"
+  password: "influx3xtend"
+
+logging:
+  level:
+    root: INFO
+    org.influx3xtend: DEBUG
