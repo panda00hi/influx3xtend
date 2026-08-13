@@ -65,6 +65,11 @@ public class StagedQueryRouter {
             log.debug("Probe min_time from InfluxDB 3 failed: {}", e.getMessage());
         }
 
+        // 边界保护 1: 若探针到的最老点位 T_influx_min >= reqEnd (并发微秒/毫秒舍入漂移或超范围)，视作热库在该请求区间无数据
+        if (minInRealtime != null && !minInRealtime.isBefore(reqEnd)) {
+            minInRealtime = null;
+        }
+
         VectorSchemaRoot realtimeRoot = null;
         VectorSchemaRoot historicalRoot = null;
         VectorSchemaRoot mergedRoot = null;
@@ -107,6 +112,14 @@ public class StagedQueryRouter {
 
             // 场景 C: 冷热混合切片 [reqStart, minInRealtime) & [minInRealtime, reqEnd)
             Instant sliceCutoff = minInRealtime;
+
+            // 边界保护 2: 确保 sliceCutoff 严格落在 (reqStart, reqEnd) 开区间内
+            if (!sliceCutoff.isAfter(reqStart) || !sliceCutoff.isBefore(reqEnd)) {
+                realtimeRoot = influx3Adapter.executeQuery(request);
+                int realtimeRows = realtimeRoot != null ? realtimeRoot.getRowCount() : 0;
+                long elapsedTime = System.currentTimeMillis() - startTime;
+                return new QueryResult(realtimeRoot, elapsedTime, realtimeRows, 0);
+            }
 
             if (isDesc) {
                 // 倒序场景 ORDER BY DESC：优先查 InfluxDB 3 最新切片 [sliceCutoff, reqEnd)
